@@ -1,13 +1,46 @@
 #include "ppos.h"
 #include "ppos-core-globals.h"
 #include "ppos-disk-manager.h"
+#include <stdbool.h>
 
 
 // ****************************************************************************
 // Coloque as suas modificações aqui, 
 // p.ex. includes, defines variáveis, // estruturas e funções
 
-
+int sem_create (semaphore_t *s, int value) {
+    if (s == NULL) return -1;
+    s->value = value;
+    s->queue = NULL;
+    return 0;
+}
+int sem_down (semaphore_t *s) {
+    if (s == NULL) return -1;
+    (s->value)--;
+    if (s->value < 0) {
+        //queue_remove((queue_t**) &readyQueue, (queue_t*) taskExec);
+        //queue_append((queue_t**) &(s->queue), (queue_t*) taskExec);
+        task_suspend(taskExec, &(s->queue));
+        //task_switch(taskDisp);
+        task_yield();
+    }
+    return 0;
+}
+int sem_up (semaphore_t *s) {
+    if (s == NULL) return -1;
+    (s->value)++;
+    if (s->value <= 0 && s->queue != NULL) {
+        queue_t* task = queue_remove((queue_t**) &(s->queue), (queue_t*) s->queue);
+        queue_append((queue_t**) &readyQueue, task);
+    }
+    return 0;
+}
+int sem_destroy (semaphore_t *s) {
+    if (s == NULL) return -1;
+    bool success = true;
+    while (s->queue != NULL && success) success = sem_up(s) == 0;
+    return 0;
+}
 
 void before_ppos_init () {
     // put your customization here
