@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <ucontext.h>		// biblioteca POSIX de trocas de contexto
 #include "queue.h"		// biblioteca de filas genéricas
+#include <stdbool.h>
 
 // Estrutura que define um Task Control Block (TCB)
 typedef struct task_t
@@ -35,6 +36,7 @@ typedef struct task_t
 typedef struct {
    task_t *queue; // Fila
    int value; // contador
+   bool isActive;
 } semaphore_t ;
 
 // estrutura que define um mutex

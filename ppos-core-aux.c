@@ -1,44 +1,50 @@
 #include "ppos.h"
 #include "ppos-core-globals.h"
 #include "ppos-disk-manager.h"
-#include <stdbool.h>
+
 
 
 // ****************************************************************************
 // Coloque as suas modificações aqui, 
 // p.ex. includes, defines variáveis, // estruturas e funções
 
+#include <stdbool.h>
+
 int sem_create (semaphore_t *s, int value) {
     if (s == NULL) return -1;
     s->value = value;
     s->queue = NULL;
+    s->isActive = true;
     return 0;
 }
 int sem_down (semaphore_t *s) {
-    if (s == NULL) return -1;
+    if (s == NULL || s->isActive != true) return -1;
+    PPOS_PREEMPT_DISABLE;
     (s->value)--;
     if (s->value < 0) {
-        //queue_remove((queue_t**) &readyQueue, (queue_t*) taskExec);
-        //queue_append((queue_t**) &(s->queue), (queue_t*) taskExec);
         task_suspend(taskExec, &(s->queue));
-        //task_switch(taskDisp);
         task_yield();
     }
+    if (s->isActive != true) return -1;
+    PPOS_PREEMPT_ENABLE;
     return 0;
 }
 int sem_up (semaphore_t *s) {
-    if (s == NULL) return -1;
+    if (s == NULL || s->isActive != true) return -1;
+    PPOS_PREEMPT_DISABLE;
     (s->value)++;
-    if (s->value <= 0 && s->queue != NULL) {
+    if (s->value <= 0) {
         queue_t* task = queue_remove((queue_t**) &(s->queue), (queue_t*) s->queue);
         queue_append((queue_t**) &readyQueue, task);
     }
+    PPOS_PREEMPT_ENABLE;
     return 0;
 }
 int sem_destroy (semaphore_t *s) {
-    if (s == NULL) return -1;
-    bool success = true;
-    while (s->queue != NULL && success) success = sem_up(s) == 0;
+    if (s == NULL || s->isActive != true) return -1;
+    bool isFinished = false;
+    while (s->queue != NULL && !isFinished) isFinished = sem_up(s) == 0;
+    s->isActive = false;
     return 0;
 }
 
