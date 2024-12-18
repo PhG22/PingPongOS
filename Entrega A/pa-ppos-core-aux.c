@@ -17,21 +17,22 @@ int sem_create (semaphore_t *s, int value) {
     s->isActive = true;
     return 0;
 }
+
 int sem_down (semaphore_t *s) {
-    if (s == NULL || s->isActive != true) return -1;
     PPOS_PREEMPT_DISABLE;
+    if (s == NULL || s->isActive != true) { PPOS_PREEMPT_ENABLE; return -1; }
     (s->value)--;
     if (s->value < 0) {
         task_suspend(taskExec, &(s->queue));
         task_yield();
     }
-    if (s->isActive != true) return -1;
     PPOS_PREEMPT_ENABLE;
     return 0;
 }
+
 int sem_up (semaphore_t *s) {
-    if (s == NULL || s->isActive != true) return -1;
     PPOS_PREEMPT_DISABLE;
+    if (s == NULL || s->isActive != true) { PPOS_PREEMPT_ENABLE; return -1; }
     (s->value)++;
     if (s->value <= 0) {
         queue_t* task = queue_remove((queue_t**) &(s->queue), (queue_t*) s->queue);
@@ -40,10 +41,10 @@ int sem_up (semaphore_t *s) {
     PPOS_PREEMPT_ENABLE;
     return 0;
 }
+
 int sem_destroy (semaphore_t *s) {
     if (s == NULL || s->isActive != true) return -1;
-    bool isFinished = false;
-    while (s->queue != NULL && !isFinished) isFinished = sem_up(s) == 0;
+    while (s->queue != NULL) sem_up(s);
     s->isActive = false;
     return 0;
 }
