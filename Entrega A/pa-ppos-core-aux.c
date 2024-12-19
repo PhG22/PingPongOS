@@ -24,6 +24,7 @@ int sem_down (semaphore_t *s) {
     (s->value)--;
     if (s->value < 0) {
         task_suspend(taskExec, &(s->queue));
+        PPOS_PREEMPT_ENABLE;
         task_yield();
     }
     PPOS_PREEMPT_ENABLE;
