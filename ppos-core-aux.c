@@ -3,51 +3,11 @@
 #include "ppos-disk-manager.h"
 
 
-
 // ****************************************************************************
 // Coloque as suas modificações aqui, 
 // p.ex. includes, defines variáveis, // estruturas e funções
 
-#include <stdbool.h>
 
-int sem_create (semaphore_t *s, int value) {
-    if (s == NULL) return -1;
-    s->value = value;
-    s->queue = NULL;
-    s->isActive = true;
-    return 0;
-}
-
-int sem_down (semaphore_t *s) {
-    PPOS_PREEMPT_DISABLE;
-    if (s == NULL || s->isActive != true) { PPOS_PREEMPT_ENABLE; return -1; }
-    (s->value)--;
-    if (s->value < 0) {
-        task_suspend(taskExec, &(s->queue));
-        task_yield();
-    }
-    PPOS_PREEMPT_ENABLE;
-    return 0;
-}
-
-int sem_up (semaphore_t *s) {
-    PPOS_PREEMPT_DISABLE;
-    if (s == NULL || s->isActive != true) { PPOS_PREEMPT_ENABLE; return -1; }
-    (s->value)++;
-    if (s->value <= 0) {
-        queue_t* task = queue_remove((queue_t**) &(s->queue), (queue_t*) s->queue);
-        queue_append((queue_t**) &readyQueue, task);
-    }
-    PPOS_PREEMPT_ENABLE;
-    return 0;
-}
-
-int sem_destroy (semaphore_t *s) {
-    if (s == NULL || s->isActive != true) return -1;
-    while (s->queue != NULL) sem_up(s);
-    s->isActive = false;
-    return 0;
-}
 
 void before_ppos_init () {
     // put your customization here
@@ -436,18 +396,4 @@ int after_mqueue_msgs (mqueue_t *queue) {
     printf("\nmqueue_msgs - AFTER - [%d]", taskExec->id);
 #endif
     return 0;
-}
-
-// Essa função implemeneta o escalonador de requisicoes de 
-// leitura/scrita do disco usado pelo gerenciador do disco
-// A função implementa a política FCFS.
-diskrequest_t* disk_scheduler(diskrequest_t* queue) {
-     // FCFS scheduler
-    if ( queue != NULL ) {
-        PPOS_PREEMPT_DISABLE
-        diskrequest_t* request = queue;
-        PPOS_PREEMPT_ENABLE
-        return request;
-    }
-    return NULL;
 }
